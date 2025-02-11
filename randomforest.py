@@ -39,9 +39,11 @@ def predict():
 
     # Return predictions from all models in JSON format
     return jsonify({
-        "model_name": "RF",
-        "predicted_class": rf_species,
-        "accuracy": rf_accuracy
+        "Random Forest Prediction": {
+            "rf_species": rf_species,
+            "rf_prediction": int(rf_prediction[0]),
+            "rf_accuracy": rf_accuracy
+        }
     })
 
 if __name__ == '__main__':
