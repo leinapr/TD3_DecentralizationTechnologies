@@ -1,15 +1,23 @@
 import requests
-import numpy as np
+import json
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-# List of model APIs exposed via ngrok
-api_urls = [
-    "https://ec82-2a01-cb00-18d-a500-7050-6c92-4352-4208.ngrok-free.app/predict",
-    "https://02ff-185-20-16-26.ngrok-free.app/predict"
-]
+# 🛠️ Load the model weights from `database.json`
+with open("database.json", "r") as f:
+    database = json.load(f)
 
+# 🏆 Build a dictionary of weights
+model_weights = {model["id"]: model["weight"] for model in database["models"]}
+
+# 🔗 URLs of participants' APIs (without parameters)
+api_urls = {
+    "lisa": "https://ec82-2a01-cb00-18d-a500-7050-6c92-4352-4208.ngrok-free.app/predict",
+    "leina": "https://02ff-185-20-16-26.ngrok-free.app/predict"
+}
+
+# Function to query an API and get the prediction
 def get_prediction(api_url, features):
     try:
         response = requests.get(api_url, params=features)
@@ -19,17 +27,17 @@ def get_prediction(api_url, features):
         print(f"⚠️ Error with {api_url}: {e}")
         return None
 
-# Load Iris dataset
+# Load the Iris dataset
 iris = load_iris()
 X, y = iris.data, iris.target
 
-# Split data into training and testing sets (80% train, 20% test)
+# Split into training and test sets
 _, X_test, _, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 correct = 0
 total = len(X_test)
+model_correct_counts = {model_id: 0 for model_id in api_urls}  # Count correct predictions per model
 
-# Iterate over each test sample
 for i, sample in enumerate(X_test):
     features = {
         "sepal_length": sample[0],
@@ -38,26 +46,45 @@ for i, sample in enumerate(X_test):
         "petal_width": sample[3]
     }
 
-    all_predictions = []
-    # Get predictions from each model
-    for url in api_urls:
+    weighted_predictions = {}  # Store weighted predictions
+    sum_weights = 0
+
+    for model_id, url in api_urls.items():
         result = get_prediction(url, features)
-        if result is not None:  # Check if prediction was received
-            all_predictions.append(result)
+        if result is not None:
+            # ⚡ Convert the class name to an integer (e.g., "setosa" -> 0)
+            class_index = list(iris.target_names).index(result)
 
-    if all_predictions:
-        # Majority voting on the classes (convert to string to avoid errors)
-        final_prediction = max(set(all_predictions), key=all_predictions.count)
+            # 🔢 Apply weighting
+            weight = model_weights.get(model_id, 1.0)  # Default value is 1.0 if the model doesn't exist in database.json
+            weighted_predictions[class_index] = weighted_predictions.get(class_index, 0) + weight
+            sum_weights += weight
 
-        # Map text labels to numeric indices
-        label_to_index = {"setosa": 0, "versicolor": 1, "virginica": 2}
-        if final_prediction in label_to_index:
-            final_prediction = label_to_index[final_prediction]
+            # 📊 Track correct predictions
+            if class_index == y_test[i]:
+                model_correct_counts[model_id] += 1
 
-        # Check if the prediction matches the true label
+    if weighted_predictions:
+        # 🏆 Determine the class with the highest weighted score
+        final_prediction = max(weighted_predictions, key=weighted_predictions.get)
         if final_prediction == y_test[i]:
             correct += 1
 
-# Calculate accuracy of the consensus model
+# Calculate the new accuracy
 accuracy = correct / total
-print(f"✅ Consensus meta-model accuracy: {accuracy:.2f}")
+print(f"✅ Weighted consensus meta-model accuracy: {accuracy:.2f}")
+
+# Update the model weights based on correct predictions
+for model_id in model_correct_counts:
+    if total > 0:
+        model_weights[model_id] = model_correct_counts[model_id] / total
+
+# Save the new weights to `database.json`
+for model in database["models"]:
+    if model["id"] in model_weights:
+        model["weight"] = model_weights[model["id"]]
+
+with open("database.json", "w") as f:
+    json.dump(database, f, indent=4)
+
+print("📌 Weights update saved in `database.json` ✅")
