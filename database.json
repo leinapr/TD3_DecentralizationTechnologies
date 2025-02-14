@@ -2,13 +2,13 @@
     "models": [
         {
             "id": "lisa",
-            "weight": 1.0,
-            "correct_predictions": 30
+            "weight": 0.8,
+            "balance": 1120
         },
         {
             "id": "leina",
             "weight": 1.0,
-            "correct_predictions": 30
+            "balance": 1150
         }
     ]
 }
