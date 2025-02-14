@@ -51,21 +51,28 @@ for i, sample in enumerate(X_test):
 
     for model_id, url in api_urls.items():
         result = get_prediction(url, features)
+
+        # Get the model object from the database based on model_id
+        model = next(model for model in database["models"] if model["id"] == model_id)
+
         if result is not None:
-            # ⚡ Convert the class name to an integer (e.g., "setosa" -> 0)
+            # Convert the class name to an integer (e.g., "setosa" -> 0)
             class_index = list(iris.target_names).index(result)
 
-            # 🔢 Apply weighting
+            # Apply weighting
             weight = model_weights.get(model_id, 1.0)  # Default value is 1.0 if the model doesn't exist in database.json
             weighted_predictions[class_index] = weighted_predictions.get(class_index, 0) + weight
             sum_weights += weight
 
-            # 📊 Track correct predictions
+            # Track correct predictions locally
             if class_index == y_test[i]:
                 model_correct_counts[model_id] += 1
 
+        # After processing predictions for all models, update the correct_predictions field in the model
+        model["correct_predictions"] = model_correct_counts[model_id]
+
     if weighted_predictions:
-        # 🏆 Determine the class with the highest weighted score
+        # Determine the class with the highest weighted score
         final_prediction = max(weighted_predictions, key=weighted_predictions.get)
         if final_prediction == y_test[i]:
             correct += 1
@@ -87,4 +94,4 @@ for model in database["models"]:
 with open("database.json", "w") as f:
     json.dump(database, f, indent=4)
 
-print("📌 Weights update saved in `database.json` ✅")
+print("📌 Weights update saved in database.json")
