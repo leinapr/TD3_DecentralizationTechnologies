@@ -13,8 +13,8 @@ model_weights = {model["id"]: model["weight"] for model in database["models"]}
 
 # 🔗 URLs of participants' APIs (without parameters)
 api_urls = {
-    "lisa": "https://ec82-2a01-cb00-18d-a500-7050-6c92-4352-4208.ngrok-free.app/predict",
-    "leina": "https://02ff-185-20-16-26.ngrok-free.app/predict"
+    "lisa": "https://44e6-89-30-29-68.ngrok-free.app/predict",
+    "leina": "https://513c-89-30-29-68.ngrok-free.app/predict"
 }
 
 # Function to query an API and get the prediction
